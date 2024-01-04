@@ -1,5 +1,6 @@
 ﻿using StoriesFeed.Domain.Models;
 using StoriesFeed.Services.Interfaces;
+using System;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -43,20 +44,26 @@ namespace StoriesFeed.Services
 
             try
             {
-                Parallel.ForEach(newStoriesIds, async storyId =>
+                var tasks = new List<Task>();
+                foreach (int storyId in newStoriesIds)
                 {
-                    var item = await this.hackerNewsApiService.GetItem(storyId);
-
-                    if (item != null && !string.IsNullOrEmpty(item.Url))
+                    tasks.Add(Task.Run(async () => 
                     {
-                        stories.Add(new()
+                        var item = await this.hackerNewsApiService.GetItem(storyId);
+
+                        if (item != null && !string.IsNullOrEmpty(item.Url))
                         {
-                            Id = storyId,
-                            Title = item.Title,
-                            Link = item.Url
-                        });
-                    }
-                });
+                            stories.Add(new()
+                            {
+                                Id = storyId,
+                                Title = item.Title,
+                                Link = item.Url
+                            });
+                        }
+                    }));                    
+                }
+                
+                await Task.WhenAll(tasks);
             }
             catch (ArgumentNullException ex)
             {
