@@ -1,35 +1,39 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using StoriesFeed.Domain.Dto;
 using StoriesFeed.Domain.Enum;
 using StoriesFeed.Services.Interfaces;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace StoriesFeed.Services
 {
     public class HackerNewsApiService : IHackerNewsApiService
     {
-        private readonly IConfiguration configuration;
-        private readonly HttpClient httpClient = new HttpClient();
+        private readonly IConfiguration configuration;        
+        private readonly IHttpClientFactory httpClientFactory;
 
-        public HackerNewsApiService(IConfiguration configuration)
+        public HackerNewsApiService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             this.configuration = configuration;
+            this.httpClientFactory = httpClientFactory;
         }
 
         public async Task<Item> GetItem(int itemId)
-        {                
-            HttpResponseMessage response = await httpClient.GetAsync($"{SetHackerNewsApiUrl(UrlTypeEnum.GetItem)}/{itemId}.json");
-            response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<Item>(responseBody);
+        {            
+            var httpClient = httpClientFactory.CreateClient();
+
+            return await httpClient.GetFromJsonAsync<Item>(
+                $"{SetHackerNewsApiUrl(UrlTypeEnum.GetItem)}/{itemId}.json",
+                new JsonSerializerOptions(defaults: JsonSerializerDefaults.Web));
         }
 
         public async Task<List<int>> GetNewStoriesIds()
         {
-            HttpResponseMessage response = await httpClient.GetAsync($"{SetHackerNewsApiUrl(UrlTypeEnum.GetNewStoriesIds)}.json");
-            response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<int>>(responseBody);
+            var httpClient = httpClientFactory.CreateClient();
+
+            return await httpClient.GetFromJsonAsync<List<int>>(
+                $"{SetHackerNewsApiUrl(UrlTypeEnum.GetNewStoriesIds)}.json",
+                new JsonSerializerOptions(defaults: JsonSerializerDefaults.Web));
         }
 
         private string SetHackerNewsApiUrl(UrlTypeEnum urlTypeEnum)
